@@ -13,25 +13,35 @@
 		<script>
             var scene = new THREE.Scene();
             var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-
+            
+            const mouse = [ .5, .5 ];
+            window.addEventListener( 'mousemove', onMouseMove, false );
+            window.addEventListener( 'wheel', onMouseWheel, false );
+            
+            let zoompos = - 100, minzoomspeed = .015;
+			let zoomspeed = minzoomspeed;
+            
             var renderer = new THREE.WebGLRenderer();
             renderer.setSize( window.innerWidth, window.innerHeight );
             document.body.appendChild( renderer.domElement );
-
+            
             
             const blocks = [];
             const textureNames = ['acacia','birch','crimson','dark_oak','jungle','oak','spruce','warped']
-            for (let y = 0; y < 10; y ++ ){
-                 for (let x = 0; x < 10; x ++ ){
-                     var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-                
-                     const cubeTexture = new THREE.TextureLoader().load(textureNames[Math.round(Math.random() * 7)]+`_planks.png`)
-                     const material = new THREE.MeshBasicMaterial({ map: cubeTexture })
-                     var cube = new THREE.Mesh( geometry, material );
-                     cube.position.x = x-4.5;
-                     cube.position.y = y-4.5;
-                     scene.add( cube );
-                     blocks.push( cube );
+            for (let y = 0; y < 10; y = y + 2  ){
+                 for (let x = 0; x < 10; x = x + 2 ){
+                     for (let z = 0; z < 10; z = z + 2 ){
+                         var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+
+                         const cubeTexture = new THREE.TextureLoader().load(textureNames[Math.round(Math.random() * 7)]+`_planks.png`)
+                         const material = new THREE.MeshBasicMaterial({ map: cubeTexture })
+                         var cube = new THREE.Mesh( geometry, material );
+                         cube.position.x = x-4;
+                         cube.position.y = y-4;
+                         cube.position.z = z-4;
+                         scene.add( cube );
+                         blocks.push( cube );
+                     }
                  }
             }
 //            const wireframe = new THREE.WireframeGeometry(geometry)
@@ -43,25 +53,68 @@
 //            scene.add( line );
             
             
-            camera.position.z = 10;
+            camera.position.z = 15;
             camera.position.y = 2;
-            camera.rotation.x = -0.1;
             console.log(blocks);
             var animate = function () {
                 requestAnimationFrame( animate );
                 
                 for (let b = 0; b < blocks.length; b ++ ){
-                    blocks[b].rotation.x += Math.random() * (blocks[b].position.x)/100;
-                    blocks[b].rotation.y += Math.random() * (blocks[b].position.x)/100;
+                    blocks[b].rotation.x += (blocks[b].position.x)/100;
+                    blocks[b].rotation.y += (blocks[b].position.y)/100;
+                    blocks[b].rotation.z += (blocks[b].position.z)/100;
                 }
 //                cube.rotation.x += 0.01;
 //                cube.rotation.y += 0.01;
 //                line.rotation.x += 0.01;
 //                line.rotation.y += 0.01;
+                
+                const minzoom = 10;
+				const maxzoom = 20;
+				let damping = ( Math.abs( zoomspeed ) > minzoomspeed ? .95 : 1.0 );
+
+				// Zoom out faster the further out you go
+				const zoom = THREE.MathUtils.clamp( Math.pow( Math.E, zoompos ), minzoom, maxzoom );
+				zoompos = Math.log( zoom );
+
+				// Slow down quickly at the zoom limits
+				if ( ( zoom == minzoom && zoomspeed < 0 ) || ( zoom == maxzoom && zoomspeed > 0 ) ) {
+
+					damping = .85;
+
+				}
+
+				zoompos += zoomspeed;
+				zoomspeed *= damping;
+                
+                
+                
+                camera.position.x = Math.sin( .5 * Math.PI * ( mouse[ 0 ] - .5 ) )* zoom;
+				camera.position.y = Math.sin( .25 * Math.PI * ( mouse[ 1 ] - .5 ) )* zoom;
+				camera.position.z = Math.cos( .5 * Math.PI * ( mouse[ 0 ] - .5 ) )* zoom;
+                camera.lookAt(0,0,0);
 
                 renderer.render( scene, camera );
             };
             animate();
+            function onMouseMove( ev ) {
+
+				mouse[ 0 ] = ev.clientX / window.innerWidth;
+				mouse[ 1 ] = ev.clientY / window.innerHeight;
+
+			}
+            function onMouseWheel( ev ) {
+
+				const amount = ev.deltaY;
+				if ( amount === 0 ) return;
+				const dir = amount / Math.abs( amount );
+				zoomspeed = dir / 10;
+
+				// Slow down default zoom speed after user starts zooming, to give them more control
+				minzoomspeed = 0.001;
+
+			}
+
 
 		</script>
 	</body>
